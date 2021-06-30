@@ -1,0 +1,174 @@
+
+Current configuration : 2525 bytes
+
+!
+
+version 12.4
+service timestamps debug datetime msec
+service timestamps log datetime msec
+no service password-encryption
+
+!
+
+hostname Router_AmsterdamB05
+
+!
+
+boot-start-marker
+boot-end-marker
+
+!
+
+no logging buffered
+enable password cisco
+
+!
+
+no aaa new-model
+
+!
+
+resource policy
+
+! ! !
+
+ip cef
+
+! ! !
+
+
+!--- RSA certificate generated after you enable the !--- ip http secure-server command.
+
+crypto pki trustpoint TP-self-signed-2401602417
+ enrollment selfsigned
+ subject-name cn=IOS-Self-Signed-Certificate-2401602417
+ revocation-check none
+ rsakeypair TP-self-signed-2401602417
+
+crypto pki certificate chain TP-self-signed-2401602417
+ certificate self-signed 01
+  30820248 308201B1 A0030201 02020101 300D0609 2A864886 F70D0101 04050030 
+  31312F30 2D060355 04031326 494F532D 53656C66 2D536967 6E65642D 43657274 
+  69666963 6174652D 32343031 36303234 3137301E 170D3130 30353139 30393031 
+  31315A17 0D323030 31303130 30303030 305A3031 312F302D 06035504 03132649 
+  4F532D53 656C662D 5369676E 65642D43 65727469 66696361 74652D32 34303136 
+  30323431 3730819F 300D0609 2A864886 F70D0101 01050003 818D0030 81890281 
+  8100CD35 A3A6E322 9B6005DA A0FF26C2 8A0DC5AF 27B38F3B DBF2BF58 D8F2655D 
+  31115681 EC8BC750 03FE3A25 0F79DC74 3A839496 CB9486F1 A1F5BF43 D92BA7AF 
+  3C72A57B D8D37799 50493588 A5A18F7F 27955AB0 AC36B560 3BE9F648 A4F6F41F 
+  B9E9C5E6 F9570DEB 5555FDED 9593BD00 5ABB30CD D3B9BDFA F570F987 651652CE 
+  3D310203 010001A3 70306E30 0F060355 1D130101 FF040530 030101FF 301B0603 
+  551D1104 14301282 10526F75 7465722E 70616D6D 692E636F 6D301F06 03551D23 
+  04183016 80146A0A C2100122 EFDA58AB C319820D 98256622 52C5301D 0603551D 
+  0E041604 146A0AC2 100122EF DA58ABC3 19820D98 25662252 C5300D06 092A8648 
+  86F70D01 01040500 03818100 83B0EC8C 6916178F 587E15D6 5485A043 E7BB258D 
+  0C9A63F2 DA18793D CACC026E BC0B9B33 F8A27B34 5BD7DD7F FCECA34F 04662AEC 
+  07FD7677 A90A8D1C 49042963 C2562FEC 4EFFF17C 360BF88A FEDC7CAA AE308F6C 
+  A5756C4A F574F5F3 39CE14AE BAAEC655 D5920DD0 DA76E296 B246E36E 16CFBC5A 
+  00974370 170BBDAD C1594013
+  	quit
+
+
+
+! ! ! ! ! ! ! ! !--- Create a user account named ccpccp with all privileges.
+
+username ccpccp privilege 15 password 0 cisco123
+archive
+ log config
+  hidekeys
+
+
+! ! ! ! ! ! !--- The LAN interface configured with a private IP address.
+
+interface FastEthernet0/0
+ description $ETH-LAN$
+ ip address 192.168.1.1 255.255.255.0
+ 
+
+!--- Designate that traffic that originates from behind !--- the interface is subject to Network Address Translation (NAT).
+
+ ip nat inside
+ ip virtual-reassembly
+ duplex auto
+ speed auto
+
+
+! !--- This is the LAN interface configured with a routable (public) IP address.
+
+interface FastEthernet0/1
+ description $ETH-WAN$
+ ip address 172.16.1.1 255.255.255.0
+ 
+!--- Designate that this interface is the !--- destination for traffic that has undergone NAT.
+ 
+ip nat outside
+ ip virtual-reassembly
+duplex auto
+ speed auto
+
+
+! ! !--- RIP version 2 routing is enabled. 
+
+router rip
+ version 2
+ network 192.168.1.0
+ no auto-summary
+
+!--- This is where the commands to enable HTTP and HTTPS are configured.
+
+ip http server
+ip http authentication local
+ip http secure-server
+
+
+! !--- This configuration is for dynamic NAT. !
+
+
+
+!--- Define a pool of outside IP addresses for NAT.
+
+ip nat pool pool 10.10.10.1 10.10.10.100 netmask 255.255.255.0
+
+!--- In order to enable NAT of the inside source address, !--- specify that traffic from hosts that match access list 1 !--- are NATed to the address pool named pool1.
+
+ip nat inside source list 1 pool pool1
+
+
+! !--- Access list 1 permits only 122.168.1.0 network to be NATed.
+
+access-list 1 remark CCP_ACL Category=2
+access-list 1 permit 192.168.1.0 0.0.0.255
+
+
+! !--- This configuration is for static NAT !--- In order to translate the packets between the real IP address 10.10.10.1 with TCP !--- port 80 and the mapped IP address 172.16.1.1 with TCP port 500. !
+
+ip nat outside source static tcp 10.10.10.1 8080 172.16.1.1 80 extendable
+
+! !
+
+
+
+
+! ! !--- The default route is configured and points to 172.16.1.2.
+
+ip route 0.0.0.0 0.0.0.0 172.16.1.2
+
+! ! ! !
+
+control-plane
+
+! ! ! ! ! ! ! ! ! !
+
+line con 0
+line aux 0
+
+!--- Telnet enabled with password as cisco.
+
+line vty 0 4
+ password cisco
+ transport input all
+line vty 5 15
+ password cisco
+ transport input ssh
+
+! ! !

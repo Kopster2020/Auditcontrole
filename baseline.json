@@ -1,0 +1,18 @@
+{
+	"baseline": [
+        {
+			"name": "Line vty",
+			"description": "Controle of login authentication op line vty staat ingeschakeld",
+			"searchstring": [
+			    "login authentication"
+			]
+		},
+   {
+			"name": "SSH",
+			"description": "Controle of SSH op line vty staat ingeschakeld",
+	        "searchstring": [
+			    "transport input ssh"
+			]
+		}
+	]
+}
